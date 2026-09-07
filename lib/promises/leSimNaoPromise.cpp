@@ -13,7 +13,7 @@ public:
     else if (!info[0].IsString())
       return Reject(info.Env(), "InvalidArgument");
 
-    string mensagem = info[0].As<Napi::String>().Utf8Value();
+    string mensagem = jsParaLatin1(info[0]);
     LeSimNaoPromise *worker = new LeSimNaoPromise(info.Env(), mensagem);
     worker->Queue();
     return worker->deferredPromise.Promise();
@@ -22,16 +22,20 @@ public:
 protected:
   void Execute() override
   {
-    result = leSimNaoPinPad(mensagem.c_str());
+    LeSimNaoPinPad leSimNao;
+    if (!vincular("LeSimNaoPinPad", &leSimNao))
+      return;
+
+    result = leSimNao(mensagem.c_str());
   }
 
   virtual void OnOK() override
   {
-    deferredPromise.Resolve(Number::New(Env(), result));
+    deferredPromise.Resolve(criarInteiro(Env(), result));
   }
 
 private:
-  LeSimNaoPromise(napi_env env, string &p_mensagem) : PromiseWorker(env), mensagem(p_mensagem) {}
+  LeSimNaoPromise(napi_env env, const string &p_mensagem) : PromiseWorker(env), mensagem(p_mensagem) {}
 
   string mensagem;
 };

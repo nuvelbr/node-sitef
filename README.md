@@ -68,6 +68,26 @@ yarn example:basic
 yarn example:client
 ```
 
+## :warning: Regras do fork (Windows x64)
+
+Tres regras valem para qualquer alteracao em `lib/`:
+
+1. **Nenhum numero atravessa o N-API como `double`.** Use `criarInteiro()`
+   (`napi_create_int32`), nunca `Napi::Number::New`. O thunk de delay-load que o
+   lld gera para `node.exe` — o binario do PDV e cross-compilado com clang-cl —
+   reserva o save de xmm0/xmm1 dentro do home space de `__delayLoadHelper2`, que
+   sobrescreve os dois registradores. O `double` de `napi_create_double` chega,
+   por isso, como o padrao de bits de um ponteiro: `configurar()` resolvia para
+   `4.05586126586e-312` em vez de `0`.
+2. **Os tipos escalares seguem a Interface Simplificada, nao o que e conveniente
+   em JavaScript.** `Reservado` e `Confirma` sao `short`; `TamMinimo` e
+   `TamMaximo` sao `short *`; `TipoCampo` e um inteiro de 32 bits (o `long` da
+   especificacao tem 32 bits no Windows x64 e 64 no Linux). As assinaturas ficam
+   em `lib/nodesitef.hpp`.
+3. **A CliSiTef fala Latin-1.** Toda string que entra ou sai da DLL passa por
+   `jsParaLatin1()` / `latin1ParaJs()`; entregar os bytes crus a
+   `napi_create_string_utf8` transforma cada acento em U+FFFD.
+
 ## :rocket: Tecnologias
 
 - [Node.js](https://nodejs.org/en/)

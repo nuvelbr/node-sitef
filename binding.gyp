@@ -17,9 +17,10 @@
           }
         ]
       ],
+      # lib/promises/promises.hpp da um #include em cada promise .cpp, ou seja o
+      # addon inteiro e uma unica unidade de traducao. Listar lib/promises/*
+      # aqui compilaria cada arquivo outra vez e duplicaria todos os simbolos.
       "sources": [
-        "lib/promises/*",
-        "lib/nodesitef.hpp",
         "lib/nodesitef.cpp"
       ],
       "include_dirs": [

@@ -14,12 +14,16 @@ public:
 protected:
   void Execute() override
   {
-    result = verificaPresencaPinPad();
+    VerificaPresencaPinPad verificaPresenca;
+    if (!vincular("VerificaPresencaPinPad", &verificaPresenca))
+      return;
+
+    result = verificaPresenca();
   }
 
   virtual void OnOK() override
   {
-    deferredPromise.Resolve(Number::New(Env(), result));
+    deferredPromise.Resolve(criarInteiro(Env(), result));
   }
 
 private:
