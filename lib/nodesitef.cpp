@@ -2,12 +2,38 @@
 #include "promises/promises.hpp"
 
 #ifdef _WIN32
-HMODULE handler;
+static HMODULE handler = nullptr;
 #endif
 
 #ifdef linux
-void *handler;
+static void *handler = nullptr;
 #endif
+
+bool sitefCarregada()
+{
+  return handler != nullptr;
+}
+
+void *sitefSymbol(const char *nome)
+{
+  if (!handler)
+    return nullptr;
+
+  #ifdef _WIN32
+  return reinterpret_cast<void *>(GetProcAddress(handler, nome));
+  #endif
+
+  #ifdef linux
+  return dlsym(handler, nome);
+  #endif
+}
+
+string sitefErroSimbolo(const char *nome)
+{
+  if (!handler)
+    return "Carregue a DLL do SiTef!";
+  return string("A DLL do SiTef nao exporta ") + nome + ".";
+}
 
 Value carregarDLL(const CallbackInfo &info)
 {
@@ -17,160 +43,44 @@ Value carregarDLL(const CallbackInfo &info)
     return Boolean::New(env, true);
 
   if (info.Length() < 1)
-    napi_throw_error(env, "0", "Informe o caminho da DLL.");
-  else if (!info[0].IsString())
-    napi_throw_type_error(env, "1", "O caminho informado não é uma string válida.");
-  else
   {
-    string path = info[0].ToString().Utf8Value();
-    #ifdef _WIN32
-    handler = LoadLibrary(path.c_str());
-    #endif
-
-    #ifdef linux
-    handler = dlopen(path.c_str(), RTLD_LAZY);
-    #endif
-
-    if (!handler)
-      napi_throw_type_error(env, "2", "Não foi possível carregar a DLL.");
-    else
-      return Boolean::New(env, true);
+    Error::New(env, "Informe o caminho da DLL.").ThrowAsJavaScriptException();
+    return env.Undefined();
   }
 
-  return env.Null();
-}
+  if (!info[0].IsString())
+  {
+    TypeError::New(env, "O caminho informado nao e uma string valida.").ThrowAsJavaScriptException();
+    return env.Undefined();
+  }
 
-int configuraIntSiTefInterativo(const char *ip, const char *terminal, const char *loja, const char *reservado, const char *parametrosAdicionais)
-{
-  if (!handler)
-
-    throw("Carregue a DLL do SiTef!");
+  string path = info[0].As<String>().Utf8Value();
 
   #ifdef _WIN32
-  ConfiguraIntSiTefInterativoEx configuraSitef = (ConfiguraIntSiTefInterativoEx)GetProcAddress(handler, "ConfiguraIntSiTefInterativoEx");
+  // LOAD_WITH_ALTERED_SEARCH_PATH faz o loader procurar as DLLs irmas
+  // (libemv64, QREncode64, libcurl64) no diretorio da propria CliSiTef em vez
+  // do diretorio do processo.
+  handler = LoadLibraryExA(path.c_str(), nullptr, LOAD_WITH_ALTERED_SEARCH_PATH);
+  if (!handler)
+  {
+    string erro = "Nao foi possivel carregar a DLL " + path + " (GetLastError=" + std::to_string(GetLastError()) + ").";
+    Error::New(env, erro).ThrowAsJavaScriptException();
+    return env.Undefined();
+  }
   #endif
 
   #ifdef linux
-  ConfiguraIntSiTefInterativoEx configuraSitef = (ConfiguraIntSiTefInterativoEx)dlsym(handler, "ConfiguraIntSiTefInterativoEx");
-  #endif
-
-  return configuraSitef(
-      ip,
-      terminal,
-      loja,
-      reservado,
-      parametrosAdicionais);
-}
-
-int verificaPresencaPinPad()
-{
+  handler = dlopen(path.c_str(), RTLD_LAZY);
   if (!handler)
-    throw("Carregue a DLL do SiTef!");
-
-  #ifdef _WIN32
-  VerificaPresencaPinPad verificaPresenca = (VerificaPresencaPinPad)GetProcAddress(handler, "VerificaPresencaPinPad");
+  {
+    const char *detalhe = dlerror();
+    string erro = "Nao foi possivel carregar a biblioteca " + path + (detalhe ? string(": ") + detalhe : string("."));
+    Error::New(env, erro).ThrowAsJavaScriptException();
+    return env.Undefined();
+  }
   #endif
 
-  #ifdef linux
-  VerificaPresencaPinPad verificaPresenca = (VerificaPresencaPinPad)dlsym(handler, "VerificaPresencaPinPad");
-  #endif
-
-  return verificaPresenca();
-}
-
-int escreveMensagemPermanentePinPad(const char *mensagem)
-{
-  if (!handler)
-    throw("Carregue a DLL do SiTef!");
-
-  #ifdef _WIN32
-  EscreveMensagemPermanentePinPad escreveMensagem = (EscreveMensagemPermanentePinPad)GetProcAddress(handler, "EscreveMensagemPermanentePinPad");
-  #endif
-
-  #ifdef linux
-  EscreveMensagemPermanentePinPad escreveMensagem = (EscreveMensagemPermanentePinPad)dlsym(handler, "EscreveMensagemPermanentePinPad");
-  #endif
-
-  return escreveMensagem(mensagem);
-}
-
-int leSimNaoPinPad(const char *mensagem)
-{
-  if (!handler)
-    throw("Carregue a DLL do SiTef!");
-
-  #ifdef _WIN32
-  LeSimNaoPinPad escreveMensagem = (LeSimNaoPinPad)GetProcAddress(handler, "LeSimNaoPinPad");
-  #endif
-
-  #ifdef linux
-  LeSimNaoPinPad escreveMensagem = (LeSimNaoPinPad)dlsym(handler, "LeSimNaoPinPad");
-  #endif
-
-  return escreveMensagem(mensagem);
-}
-
-int iniciaFuncaoSiTefInterativo(int funcao, const char *valor, const char *cupomFiscal, const char *dataFiscal, const char *horaFiscal, const char *operador, const char *paramAdicionais)
-{
-  if (!handler)
-    throw("Carregue a DLL do SiTef!");
-
-  #ifdef _WIN32
-  IniciaFuncaoSiTefInterativo iniciaFuncao = (IniciaFuncaoSiTefInterativo)GetProcAddress(handler, "IniciaFuncaoSiTefInterativo");
-  #endif
-
-  #ifdef linux
-  IniciaFuncaoSiTefInterativo iniciaFuncao = (IniciaFuncaoSiTefInterativo)dlsym(handler, "IniciaFuncaoSiTefInterativo");
-  #endif
-
-  return iniciaFuncao(
-      funcao,
-      valor,
-      cupomFiscal,
-      dataFiscal,
-      horaFiscal,
-      operador,
-      paramAdicionais);
-}
-
-int continuaFuncaoSiTefInterativo(int *comando, long *tipoCampo, int *tamMinimo, int *tamMaximo, char *buffer, int tamBuffer, int continua)
-{
-  if (!handler)
-    throw("Carregue a DLL do SiTef!");
-
-  #ifdef _WIN32
-  ContinuaFuncaoSiTefInterativo continuaFuncao = (ContinuaFuncaoSiTefInterativo)GetProcAddress(handler, "ContinuaFuncaoSiTefInterativo");
-  #endif
-
-  #ifdef linux
-  ContinuaFuncaoSiTefInterativo continuaFuncao = (ContinuaFuncaoSiTefInterativo)dlsym(handler, "ContinuaFuncaoSiTefInterativo");
-  #endif
-
-  return continuaFuncao(
-      comando,
-      tipoCampo,
-      tamMinimo,
-      tamMaximo,
-      buffer,
-      tamBuffer,
-      continua);
-}
-
-void finalizaFuncaoSiTefInterativo(int confirma, const char *cupomFiscal, const char *dataFiscal, const char *horaFiscal, const char *paramAdicionais)
-{
-  if (!handler)
-
-    throw("Carregue a DLL do SiTef!");
-
-  #ifdef _WIN32
-  FinalizaFuncaoSiTefInterativo finalizaFuncao = (FinalizaFuncaoSiTefInterativo)GetProcAddress(handler, "FinalizaFuncaoSiTefInterativo");
-  #endif
-
-  #ifdef linux
-  FinalizaFuncaoSiTefInterativo finalizaFuncao = (FinalizaFuncaoSiTefInterativo)dlsym(handler, "FinalizaFuncaoSiTefInterativo");
-  #endif
-
-  finalizaFuncao(confirma, cupomFiscal, dataFiscal, horaFiscal, paramAdicionais);
+  return Boolean::New(env, true);
 }
 
 Object Init(Env env, Object exports)
@@ -206,6 +116,10 @@ Object Init(Env env, Object exports)
   exports.Set(
       String::New(env, "finalizaFuncaoSiTefInterativo"),
       Function::New(env, FinalizaFuncaoPromise::Create));
+
+  exports.Set(
+      String::New(env, "obtemQuantidadeTransacoesPendentes"),
+      Function::New(env, TransacoesPendentesPromise::Create));
 
   return exports;
 }

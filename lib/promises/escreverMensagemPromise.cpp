@@ -13,7 +13,7 @@ public:
     else if (!info[0].IsString())
       return Reject(info.Env(), "InvalidArgument");
 
-    string mensagem = info[0].As<Napi::String>().Utf8Value();
+    string mensagem = jsParaLatin1(info[0]);
     EscreverMensagemPromise *worker = new EscreverMensagemPromise(info.Env(), mensagem);
     worker->Queue();
     return worker->deferredPromise.Promise();
@@ -22,16 +22,20 @@ public:
 protected:
   void Execute() override
   {
-    result = escreveMensagemPermanentePinPad(mensagem.c_str());
+    EscreveMensagemPermanentePinPad escreveMensagem;
+    if (!vincular("EscreveMensagemPermanentePinPad", &escreveMensagem))
+      return;
+
+    result = escreveMensagem(mensagem.c_str());
   }
 
   virtual void OnOK() override
   {
-    deferredPromise.Resolve(Number::New(Env(), result));
+    deferredPromise.Resolve(criarInteiro(Env(), result));
   }
 
 private:
-  EscreverMensagemPromise(napi_env env, string &p_mensagem) : PromiseWorker(env), mensagem(p_mensagem) {}
+  EscreverMensagemPromise(napi_env env, const string &p_mensagem) : PromiseWorker(env), mensagem(p_mensagem) {}
 
   string mensagem;
 };

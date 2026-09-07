@@ -4,7 +4,7 @@ export interface ILibrary {
     ip: string,
     loja: string,
     terminal: string,
-    reservado: string,
+    reservado: string | number,
     parametrosAdicionais: string
   ) => number;
   verificaPresencaPinPad: () => number;
@@ -29,19 +29,24 @@ export interface ILibrary {
     continua: number
   ) => IResultadoContinuarFuncao;
   finalizaFuncaoSiTefInterativo: (
-    confirma: number,
+    confirma: string | number,
     cupomFiscal: string,
     dataFiscal: string,
     horaFiscal: string,
     parametros: string
   ) => boolean;
+  obtemQuantidadeTransacoesPendentes: (
+    dataFiscal: string,
+    cupomFiscal: string
+  ) => number;
 }
 
 export interface IParametrosConfiguracao {
   ip: string;
   loja: string;
   terminal: string;
-  reservado?: string;
+  /** Campo `Reservado` da CliSiTef (short). Aceita numero ou string numerica. */
+  reservado?: string | number;
   parametrosAdicionais: string;
 }
 
@@ -57,6 +62,7 @@ export interface IParametrosIniciarFuncao {
 
 export interface IParametrosContinuarFuncao
   extends Omit<IResultadoContinuarFuncao, 'retorno'> {
+  /** A especificacao exige no minimo 20000 bytes; valores menores sao elevados. */
   tamanhoBuffer: number;
   continua: number;
 }
@@ -71,7 +77,7 @@ export interface IResultadoContinuarFuncao {
 }
 
 export interface IParametrosFinalizarFuncao {
-  confirma: number;
+  confirma: string | number;
   cupomFiscal: string;
   dataFiscal: string;
   horaFiscal: string;

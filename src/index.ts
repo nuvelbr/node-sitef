@@ -32,7 +32,7 @@ export default class SiTef {
         ip,
         loja,
         terminal,
-        reservado || '',
+        reservado ?? 0,
         parametrosAdicionais || ''
       );
     });
@@ -82,6 +82,18 @@ export default class SiTef {
         parametros.buffer,
         parametros.tamanhoBuffer,
         parametros.continua
+      );
+    });
+  }
+
+  obterQuantidadeTransacoesPendentes(
+    dataFiscal: string,
+    cupomFiscal: string
+  ): Promise<number> {
+    return createPromise<number>(() => {
+      return library.obtemQuantidadeTransacoesPendentes(
+        dataFiscal,
+        cupomFiscal
       );
     });
   }
